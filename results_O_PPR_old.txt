@@ -1,0 +1,36 @@
+O
+
+Model: LinearRegression
+
+Score: -42.39272157015897
+
+Params: {'n_features_to_select': 63}
+
+
+---------------------------------------------
+
+
+O
+
+Model: Ridge
+
+Score: -42.012194348489274
+
+Params: {'estimator__alpha': 1000, 'n_features_to_select': 82}
+
+
+---------------------------------------------
+
+
+O
+
+Model: Lasso
+
+Score: -41.88351278899148
+
+Params: {'estimator__alpha': 0.1, 'n_features_to_select': 23}
+
+
+---------------------------------------------
+
+

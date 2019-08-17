@@ -1,0 +1,36 @@
+O_notPPR
+
+Model: LinearRegression
+
+Score: -27.77548696724238
+
+Params: {'n_features_to_select': 114}
+
+
+---------------------------------------------
+
+
+O_notPPR
+
+Model: Ridge
+
+Score: -26.348395545582502
+
+Params: {'estimator__alpha': 100000, 'n_features_to_select': 57}
+
+
+---------------------------------------------
+
+
+O_notPPR
+
+Model: Lasso
+
+Score: -26.145005004995998
+
+Params: {'estimator__alpha': 100, 'n_features_to_select': 8}
+
+
+---------------------------------------------
+
+
