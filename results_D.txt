@@ -2,7 +2,7 @@ D
 
 Model: LinearRegression
 
-Score: -35.6965754032135
+Score: -29.85244369506836
 
 Params: {'fit_intercept': True}
 
@@ -14,7 +14,7 @@ D
 
 Model: Ridge
 
-Score: -29.012994462291793
+Score: -27.736384261802872
 
 Params: {'alpha': 1000}
 
@@ -26,9 +26,9 @@ D
 
 Model: Lasso
 
-Score: -28.939561564757486
+Score: -28.138597255559894
 
-Params: {'alpha': 10000}
+Params: {'alpha': 10}
 
 
 ---------------------------------------------
@@ -38,9 +38,9 @@ D
 
 Model: XGBRegressor
 
-Score: -28.683861911296844
+Score: -28.316487058997154
 
-Params: {'max_depth': 3, 'n_estimators': 50}
+Params: {'max_depth': 4, 'n_estimators': 50}
 
 
 ---------------------------------------------
@@ -50,9 +50,9 @@ D
 
 Model: RandomForestRegressor
 
-Score: -27.223397171403143
+Score: -27.740965413207277
 
-Params: {'max_depth': 6, 'n_estimators': 100}
+Params: {'max_depth': 8, 'n_estimators': 200}
 
 
 ---------------------------------------------

@@ -2,7 +2,7 @@ O_NonPPR
 
 Model: LinearRegression
 
-Score: -71.58692655838473
+Score: -38.35735253416254
 
 Params: {'fit_intercept': True}
 
@@ -14,7 +14,7 @@ O_NonPPR
 
 Model: Ridge
 
-Score: -32.559406623378415
+Score: -31.321731343563258
 
 Params: {'alpha': 100000}
 
@@ -26,7 +26,7 @@ O_NonPPR
 
 Model: Lasso
 
-Score: -31.970577664749992
+Score: -31.03322912060063
 
 Params: {'alpha': 10}
 
@@ -38,9 +38,9 @@ O_NonPPR
 
 Model: XGBRegressor
 
-Score: -27.711741008984298
+Score: -27.770111893860836
 
-Params: {'max_depth': 4, 'n_estimators': 100}
+Params: {'max_depth': 6, 'n_estimators': 100}
 
 
 ---------------------------------------------
@@ -50,7 +50,7 @@ O_NonPPR
 
 Model: RandomForestRegressor
 
-Score: -29.352320724168834
+Score: -28.626114262046894
 
 Params: {'max_depth': 8, 'n_estimators': 200}
 
