@@ -9,9 +9,80 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+```{r}
+library(tidyverse)
 
-
-```{r cars}
-summary(cars)
 ```
+
+# Using Machine Learning to win my Fantasy Football Leagues
+## By Thompson Bliss
+
+## Section 1: Introduction
+
+Due to growing numbers of websites and apps, as well as the greater fan interest, fantasy football participation has been increasing every year. According to Nielsen ratings, more than 15.5 million people played in a fantasy football in 2017. While many websites including [ESPN](https://fantasy.espn.com/football/players/projections), [YahooSports](https://sports.yahoo.com/2019-fantasy-football-rankings-taking-stock-at-every-position-142954685.html) and many others release projections and rankings from some of their football analysts, much of the projected points comes human perception rather than pure statistical modelling. Considering fantasy football has a scoring system based solely on player statistics, it may be interesting to see if a machine learning model can perform as well if not better than human football experts.
+
+This project uses machine learning to predict a player's season points based on how the player has performed in previous years.
+
+## Section 2: Proceedure
+### Step 1 Acquiring the Data
+
+Using the R package nflScrapR, player stats for each player in each game can be acquired using the 'season_player_game' command. The data is includes entries from 2009 - 2018. This data included the following statistics:
+*Touchdowns
+*Interceptions
+*Fumbles
+*Pass Yards
+*Rush Yards
+*Recieving Yards
+*Pass Attempts
+*Pass Completions
+*Rush Attempts
+*Receptions
+
+Since the data did not include fantasy points, these were manually calculated using the weighted sum given by [ESPN](https://support.espn.com/hc/en-us/articles/360003914032-Scoring-Formats).
+
+Additionally, their positions can be aquired using 'season_rosters'. The data is merged to get the position for each player.
+
+### Step 2: Feature Creation
+
+To increase accuracy of predictions, it is ideal to use more than just a player's raw stastics from the previous season. Using all the offensive columns listed above, the following features are added:
+
+| Feature | Description |
+|-----------|-----------|
+| Per Game | Per Game value of offensive statistic from previous year |
+| Var | Variance of offensive statistic per game from previous year |
+| Career | Career value of offensive statistic for player up to previous year |
+| Career Per Game | Career per game value of offensive statistic for player up to previous year |
+
+
+
+```{r}
+#loading data
+df_results_2018_lin <- read_csv('results_2018_linear.csv')
+df_results_2019_lin <- read_csv('results_2019_linear.csv')
+df_results_2018_tree <- read_csv('results_2018_tree.csv')
+df_results_2019_tree <- read_csv('results_2019_tree.csv')
+df_coef_O_lin <- read_csv('output_coefs_O_linear.csv')
+df_coef_D_lin <- read_csv('output_coefs_D_linear.csv')
+df_coef_O_tree <- read_csv('output_coefs_O_tree.csv')
+df_coef_D_tree <- read_csv('output_coefs_D_tree.csv')
+
+```
+
+```{r}
+
+df_plot <- data.frame(linear_error = abs(df_results_2018_lin$actual_points - df_results_2018_lin$predicted_points), tree_error = abs(df_results_2018_tree$actual_points - df_results_2018_tree$predicted_points)) 
+
+df_plot <- df_plot %>% gather(key = "error_type", value = "error", c("linear_error", "tree_error"))
+
+ggplot(df_plot, aes(error, color = error_type)) + geom_density(alpha=0.25) + xlim(0,150) + theme_bw()
+
+```
+
+
+```{r}
+
+df_coef_O_tree
+```
+
+
+https://www.nielsen.com/us/en/insights/article/2018/fantasy-is-reality-a-look-at-growing-engagement-in-fantasy-sports/
