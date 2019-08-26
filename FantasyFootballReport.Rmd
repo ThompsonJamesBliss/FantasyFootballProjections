@@ -76,7 +76,7 @@ In addition to these features, the following are created:
 * Total games played
 
 
-Additionally, for each of these features, it is ideal to not only look at how each player individually performed, but how the team around him performed and how the team is changing. Additionally, schedule has a major impact on how a player performs. If they played an easy schedule, perhaps their numbers are artificially high. Conversely, if they played a difficult schedule, their numbers could be artificially low. To take all of this into account, for each feature listed above, the following features are added:
+Additionally, for each of these features, it is ideal to not only look at how each player individually performed, but how the team around him performed and how the team is changing. Also, players who change teams may expect to perform, differently if the team around them is significantly better or worse. Additionally, schedule has a major impact on how a player performs. If they played an easy schedule, perhaps their numbers are artificially high. Conversely, if they played a difficult schedule, their numbers could be artificially low. To take all of this into account, for each feature listed above, the following features are added:
 
 | Feature | Description |
 |-----------|-----------------------------------------------------------|
@@ -100,25 +100,49 @@ Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters a
 
 The best linear model is Lasso Regression, while the best tree-based model is XgBoost.The top 10 coefficients / feature importances are shown in the chart below:
 
-```{r}
+```{r fig.width=12, fig.height=10}
 df_coef_O_lin <- read_csv('output_coefs_O_linear.csv') %>% head(10) %>% select(value)
 
-df_coef_O_lin <- df_coef_O_lin %>% mutate(name = c("Career Rush Yards\nPer Game\nUp to Previous Season",
-                                  "Career Recieving Yards\nPer Game\nUp to Previous Season",
-                                  "Fantasy Points Previous Season",
-                                  "Rush Yards Per Game Previous Season",
-                                  "Variance of Pass TDs thrown Previous Season",
-                                  "Career Fantasy Points up to Previous Season",
-                                  "Recieving Yards Previous Season",
-                                  "Team Receptions Previous Season For Previous Team",
-                                  "Career Rush Yards\nPer Game\nUp to Previous Season",
-                                  "Difference in Team Punt Returns\nBetween Previous and Current Teams"))
-
-ggplot(df_coef_O_lin, aes(y = value, x = name)) + geom_bar(stat = "Identity") + theme_bw()
-
-df_coef_O_tree <- read_csv('output_coefs_O_tree.csv') %>% head(15)
+df_coef_O_lin <- df_coef_O_lin %>% mutate(name = c("Player\nCareer Rush\nYards Per\nGame Up\nto Previous\nSeason",
+                                  "Player\nCareer Recieving\nYards Per\nGame Up\nto Previous\nSeason",
+                                  "Player\nFantasy Points\nPrevious\nSeason",
+                                  "Player\nRush Yards\nPer Game\nPrevious\nSeason",
+                                  "Player\nVariance of\nPass TDs\nthrown Previous\nSeason",
+                                  "Player\nCareer Fantasy\nPoints up\nto Previous\nSeason",
+                                  "Player\nRecieving Yards\nPrevious Season",
+                                  "Team Receptions\nPrevious Season\nFor\nPrevious Team",
+                                  "Player\nCareer Rush\nYards Per\nGame Up to\nPrevious\neason",
+                                  "Difference in\nTeam Punt\nReturns Between\nPrevious and\nCurrent Teams")) %>%
+                                  as.data.frame()
 
 
+
+ggplot(df_coef_O_lin, aes(y = value, x = reorder(name, -abs(value)))) + geom_bar(stat = "Identity",
+                                                                                 fill = "lightblue",
+                                                                                 color = "blue") + theme_bw() +
+  xlab('Coefficient') + ylab('Value') + ggtitle("Coefficient Values for Linear Model")  + geom_hline(yintercept = 0)
+
+```
+
+```{r fig.width=12, fig.height=10}
+df_coef_O_tree <- read_csv('output_coefs_O_tree.csv') %>% head(10)# %>% select(value)
+
+df_coef_O_tree <- df_coef_O_tree %>% mutate(name = c("Player\nVariance of\nFantasy Points\nPrevious Season",
+                                  "Player\nFantasy Points Per\nGame Previous\nSeason",
+                                  "Team Career Pass\nYards Previous\nSeason For\nPrevious Team",
+                                  "Player\nFantasy Points\nPrevious Season",
+                                  "Difference in\nTeam Recieving\nYards Variance\nBetween Previous\nand Current Teams",
+                                  "Player\nCareer Recieving\nYards Previous\nSeason For\nPrevious Team",
+                                  "Player\nCareer Pass\nTDs Per\nGame Up\nto Previous\nSeason",
+                                  "Player\nCareer Rush\nYards Per\nGame Up\nto Previous\nSeason",
+                                  "Team Punt Return TDs\nPrevious Season\nFor\nNew Team",
+                                  "Difference in\nTeam Fumbles\n Between Previous\nand Current\nSchedule")) %>%
+                                  as.data.frame()
+
+ggplot(df_coef_O_tree, aes(y = value, x = reorder(name, -abs(value)))) + geom_bar(stat = "Identity",
+                                                                                 fill = "lightblue",
+                                                                                 color = "blue") + theme_bw()+
+  xlab('Coefficient') + ylab('Value') + ggtitle("Coefficient Values for Tree Model")
 
 ```
 
@@ -129,10 +153,6 @@ df_results_2018_lin <- read_csv('results_2018_linear.csv')
 df_results_2019_lin <- read_csv('results_2019_linear.csv')
 df_results_2018_tree <- read_csv('results_2018_tree.csv')
 df_results_2019_tree <- read_csv('results_2019_tree.csv')
-df_coef_O_lin <- read_csv('output_coefs_O_linear.csv')
-df_coef_D_lin <- read_csv('output_coefs_D_linear.csv')
-df_coef_O_tree <- read_csv('output_coefs_O_tree.csv')
-df_coef_D_tree <- read_csv('output_coefs_D_tree.csv')
 
 ```
 
@@ -145,10 +165,14 @@ df_plot_text <- data.frame(error_type = c("Linear", "Tree"), error = c(mean(df_p
 
 df_plot <- df_plot %>% gather(key = "error_type", value = "error", c("linear_error", "tree_error"))
 
-df_plot <- df_plot %>% group_by(error_type) %>% mutate(mean_val = mean(error)) %>% ungroup()
+df_plot$error_type[df_plot$error_type == "linear_error"] = "Linear Error"
+df_plot$error_type[df_plot$error_type == "tree_error"] = "Tree Error"
+
+df_plot_text <- df_plot %>% group_by(error_type) %>% summarize(error = mean(error)) %>% ungroup()
 
 ggplot(df_plot, aes(error, color = error_type)) + geom_density(alpha=0.25) + xlim(0,150) + theme_bw() +
-  geom_text_repel(aes(label = mean_val), y = 0.2)
+  geom_text_repel(data = df_plot_text, aes(label = paste0("Mean: ",signif(error,4)), color = error_type), y = 0.2) +
+  labs(color = "Error Type") + xlab("Error") + ylab("Density") + ggtitle("Density of Error for 2018 Season")
 
 ```
 
