@@ -135,7 +135,7 @@ df_coef_O_tree <- df_coef_O_tree %>% mutate(name = c("Player\nVariance of\nFanta
                                   "Player\nCareer Recieving\nYards Previous\nSeason For\nPrevious Team",
                                   "Player\nCareer Pass\nTDs Per\nGame Up\nto Previous\nSeason",
                                   "Player\nCareer Rush\nYards Per\nGame Up\nto Previous\nSeason",
-                                  "Team Punt Return TDs\nPrevious Season\nFor\nNew Team",
+                                  "Team Punt Return\nTDs Previous\nSeason For\nNew Team",
                                   "Difference in\nTeam Fumbles\n Between Previous\nand Current\nSchedule")) %>%
                                   as.data.frame()
 
@@ -179,7 +179,85 @@ ggplot(df_plot, aes(error, color = error_type)) + geom_density(alpha=0.25) + xli
 
 ```{r}
 
-df_coef_O_tree
+df_results_2018_yahoo <- read_csv('df_yahooSports.csv')
+
+df_results_2018_yahoo <- df_results_2018_yahoo %>% select(Rank, `Player Name`, Team, Position) %>% rowwise() %>%
+  mutate(name = paste0(substr(strsplit(`Player Name`, ' ')[[1]][1], start = 1, stop = 1), '.', strsplit(`Player Name`, ' ')[[1]][2]),
+         pos_keep = Position,
+         Rank_Yahoo = Rank) %>% as.data.frame() %>% select(Rank_Yahoo, name, Team, pos_keep)
+
+df_results_2018_yahoo$Team[df_results_2018_yahoo$Team == "JAC"] = "JAX"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Brown" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "PIT"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "K.Hunt" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "KC"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "O.Beckham" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "NYG"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Howard" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "CHI"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "R.Gronkowski" & 
+                        df_results_2018_yahoo$pos_keep == "TE",]$Team = "NE"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Ajayi" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "PHI"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Collins" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "BAL"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Gordon" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "CLE"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Cooper" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "OAK"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "M.Ingram" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "NO"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "C.Hogan" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "NE"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "M.Lynch" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "OAK"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "C.Hyde" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "CLE"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "D.Baldwin" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "SEA"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "T.Coleman" & 
+                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "ATL"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "D.Thomas" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "DEN"
+
+df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Robinson" & 
+                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "JAX"
+
+df_results_2018_ESPN <- read_csv('df_ESPN.csv')
+
+df_results_2018_ESPN <- df_results_2018_ESPN %>% select(`Rank, Player`, Team, Pos) %>% rowwise() %>%
+  mutate(name = paste0(substr(strsplit(`Rank, Player`, ' ')[[1]][2], start = 1, stop = 1), '.', strsplit(`Rank, Player`, ' ')[[1]][3]),
+         Rank_ESPN = substr(strsplit(`Rank, Player`, ' ')[[1]][1], 1, nchar(strsplit(`Rank, Player`, ' ')[[1]][1]) - 1),
+         pos_keep = Pos) %>% as.data.frame()  %>% select(Rank_ESPN, name, Team, pos_keep)
+
+df_results_2018_lin <- df_results_2018_lin %>% mutate(Rank_lin = rank(-predicted_points),
+                               Rank_actual = rank(-actual_points)) %>% select(Team, name, pos_keep,
+                                                                              Rank_actual, Rank_lin)
+
+df_results_2018_tree <- df_results_2018_tree %>% mutate(Rank_tree = rank(-predicted_points)) %>% select(Team, name, pos_keep, Rank_tree)
+
+df_results_2018_lin$Team[df_results_2018_lin$Team == "LA"] = "LAR"
+df_results_2018_tree$Team[df_results_2018_tree$Team == "LA"] = "LAR"
+
+df_results <- inner_join(df_results_2018_yahoo, df_results_2018_ESPN) %>% inner_join(df_results_2018_lin) %>%
+  inner_join(df_results_2018_tree)
+
 ```
 
 
