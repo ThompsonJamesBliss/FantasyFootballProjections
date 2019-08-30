@@ -14,6 +14,7 @@ knitr::opts_chunk$set(message = FALSE,
 library(tidyverse)
 library(dplyr)
 library(ggrepel)
+library(knitr)
 
 ```
 
@@ -91,7 +92,7 @@ Additionally, for each of these features, it is ideal to not only look at how ea
 
 ### Step 3: Model Fitting
 
-Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters are explored. The data is split into three sets: Training (Seasons 2009 - 2017), Validation (2018), Test (2019). The models are fit with the features as the independent variables and points as the dependent variable. They are tested with the least absolute deviations penalty. This penalty was chosen because RMSE penalizes larger penalties at quadratically greater rate than smaller penalties. Since there are breakout players or players who get injured who are bound to have stat lines far from what is predicted, RMSE would favor a model that more conservatively accounts for random events. The following models are trained with 2009 - 2017 data:
+Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters are explored. The data is split into three sets: Training (Seasons 2009 - 2017), Validation (2018), Test (2019). The training, validation and test data have approximately 3000, 400 and 400 rows respectively. The models are fit with the features as the independent variables and points as the dependent variable. They are tested with the least absolute deviations penalty. This penalty was chosen because RMSE penalizes larger penalties at quadratically greater rate than smaller penalties. Since there are breakout players or players who get injured who are bound to have stat lines far from what is predicted, RMSE would favor a model that more conservatively accounts for random events. The following models are trained with 2009 - 2017 data:
 
 * Linear Regression
 * Lasso Regression
@@ -99,7 +100,7 @@ Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters a
 * XgBoost Regression
 * Random Forest Regression
 
-The best linear model is Lasso Regression, while the best tree-based model is XgBoost. The mean training error for lasso and XgBoost were approximately 31 and 27 respectively. The top 10 coefficients for lasso are shown below:
+The best linear model is Lasso Regression, while the best tree-based model is XgBoost. The mean training error for lasso and XgBoost were approximately 31 and 27 per player respectively. Although these numbers seem somewhat large, if this was divided by 16 (number of games), it is an error of less than two fantasy points per game. The top 10 coefficients for lasso are shown below:
 
 ```{r fig.width=12, fig.height=10}
 df_coef_O_lin <- read_csv('output_coefs_O_linear.csv') %>% head(10) %>% select(value)
@@ -112,7 +113,7 @@ df_coef_O_lin <- df_coef_O_lin %>% mutate(name = c("Player\nCareer Rush\nYards P
                                   "Player\nCareer Fantasy\nPoints up\nto Previous\nSeason",
                                   "Player\nRecieving Yards\nPrevious Season",
                                   "Team Receptions\nPrevious Season\nFor\nPrevious Team",
-                                  "Player\nCareer Rush\nYards Per\nGame Up to\nPrevious\neason",
+                                  "Player\nCareer Rush\nYards Per\nGame Up to\nPreviousSeason",
                                   "Difference in\nTeam Punt\nReturns Between\nPrevious and\nCurrent Teams")) %>%
                                   as.data.frame()
 
@@ -139,7 +140,7 @@ Moreover, it is interesting to note that  `Career Fantasy Points` have a negativ
 
 Additionally, The fact that career variance is negatively correlated is not surprising as it suggests that a high yearly or career total may be the result of one or two amazing games rather than consistent play.
 
-Finally, it is interesting that difference in team punt returns between teams was a top 10 feature. Perhaps this is a measure of how strong a team's defense is and how often they force punts. Teams that have many punt returns will have more offensive opportunities. Also, if they are returning the punt, that means the offense will start in better field position, which increase's a player's chance of scoring a touchdown.
+Finally, it is interesting that Difference in `Team Punt Returns Between Previous and Current Teams` was a top 10 feature. Perhaps this is a measure of how strong a team's defense is and how often they force punts. Teams that have many punt returns will have more offensive opportunities. Also, if they are returning the punt, that means the offense will start in better field position, which increase's a player's chance of scoring a touchdown.
 
 Next, the top 10 most important features for XgBoost are shown below:
 
@@ -161,11 +162,17 @@ df_coef_O_tree <- df_coef_O_tree %>% mutate(name = c("Player\nVariance of\nFanta
 ggplot(df_coef_O_tree, aes(y = value, x = reorder(name, -abs(value)))) + geom_bar(stat = "Identity",
                                                                                  fill = "lightblue",
                                                                                  color = "blue") + theme_bw()+
-  xlab('Coefficient') + ylab('Value') + ggtitle("Coefficient Values for Tree Model")
+  xlab('Importance') + ylab('Value') + ggtitle("Coefficient Values for Tree Model")
 
 ```
 
-The gradient boosting model seems to use features related previous fantasy points more than raw statistics as 3 of the top 4 most important features are fantasy point related.
+The gradient boosting model seems to use features related previous fantasy points more than raw statistics as 3 of the top 4 most important features are fantasy point related. Perhaps this importance makes sense as it is irrelevant how players earn points, but whether they are earning them.
+
+Moreover, an important feature is `Team Punt Return TDs Previous Season For New Team`. I would imagine that similar to how `Team Punt Returns Between Previous and Current Teams` was a measure of defense and field position for the lasso model.
+
+Finally, it is interesting to note that team `Difference in Team Fumbles Between Previous and Current Schedule` is an important feature. Anyone on the team can fumble, and even if it is not the specific player it will affect his ability to earn more points on the drive. Thus, playing a schedule with teams that force less fumbles, helps every player earn more points.
+
+## Section 3: Model Validation
 
 ```{r}
 #loading data
@@ -173,11 +180,11 @@ df_results_2018_lin <- read_csv('results_2018_linear.csv')
 df_results_2019_lin <- read_csv('results_2019_linear.csv')
 df_results_2018_tree <- read_csv('results_2018_tree.csv')
 df_results_2019_tree <- read_csv('results_2019_tree.csv')
-
 ```
 
-```{r}
+To test the accuracy of the model, the two models are tested against the actual point totals in 2018:
 
+```{r}
 df_plot <- data.frame(linear_error = abs(df_results_2018_lin$actual_points - df_results_2018_lin$predicted_points), tree_error = abs(df_results_2018_tree$actual_points - df_results_2018_tree$predicted_points)) 
 
 df_plot_text <- data.frame(error_type = c("Linear", "Tree"), error = c(mean(df_plot$linear_error),
@@ -190,12 +197,14 @@ df_plot$error_type[df_plot$error_type == "tree_error"] = "Tree Error"
 
 df_plot_text <- df_plot %>% group_by(error_type) %>% summarize(error = mean(error)) %>% ungroup()
 
-ggplot(df_plot, aes(error, color = error_type)) + geom_density(alpha=0.25) + xlim(0,150) + theme_bw() +
+ggplot(df_plot, aes(error, color = error_type)) + geom_density(alpha=0.25) + theme_bw() +
   geom_text_repel(data = df_plot_text, aes(label = paste0("Mean: ",signif(error,4)), color = error_type), y = 0.2) +
   labs(color = "Error Type") + xlab("Error") + ylab("Density") + ggtitle("Density of Error for 2018 Season")
-
 ```
 
+The XgBoosting model seems to do better yet again. There is a large range of errors with a maximas for each of them around their respective mean. One reason this large range occured is from players like Patrick Mahomes who based on playing one game in 2017 was incorrectly predcited by over 250 by each model. Perhaps if there was some indicator about whether a player was expected to start, it would be able to more accurately predict his success this past season. Also, players like Tarik Cohen were expected to have a major boost with better coaching, but since the model does not take quality of coaches into account, this caused error.
+
+Moreover, it is ideal to compare the models to Yahoo and ESPN as their projections are what many use when selecting their teams. Unfortunatley, no data was availble for thier projections for each player, but it is possible to find their rankings. Below, we compare our fantasy rankings to theirs and measure the error:
 
 ```{r}
 
@@ -237,9 +246,44 @@ df_results_plot <- df_results_plot %>% gather(key = "key", value =  "value")
 
 ggplot(df_results_plot, aes(reorder(key, value), value)) + geom_bar(stat = "identity", color = "blue",
                                                                     fill = "lightblue") + xlab('Error Type') + ylab('Value') +
-  ggtitle('Error of Rankings by Source')
+  ggtitle('Error of Rankings by Source') + theme_bw()
 
 ```
 
+The Yahoo and ESPN model both perform better, but since they are put together by humans, they have the advantage of knowing which players will have better coaching and which players could breakout with more playtime opportunities.
+
+## Section 4: 2019 Results
+
+The models give the following predictions for 2019:
+
+```{r}
+names(df_results_2019_lin) <- c("Team", "NA", "Name", "Position", "Predicted Points")
+df_results_2019_lin <- df_results_2019_lin[,c(1, 4, 3, 5)]
+df_results_2019_lin$`Predicted Points` <- round(df_results_2019_lin$`Predicted Points`, 2)
+
+kable(df_results_2019_lin %>% arrange(-`Predicted Points`) %>% filter(Position == "QB") %>% head(5), caption = "Top 5 Projected QBs 2019 - Linear Model")
+
+kable(df_results_2019_lin %>% arrange(-`Predicted Points`) %>% filter(Position == "RB") %>% head(5), caption = "Top 5 Projected RBs 2019 - Linear Model")
+
+kable(df_results_2019_lin %>% arrange(-`Predicted Points`) %>% filter(Position == "WR") %>% head(5), caption = "Top 5 Projected WRs 2019 - Linear Model")
+
+kable(df_results_2019_lin %>% arrange(-`Predicted Points`) %>% filter(Position == "TE") %>% head(5), caption = "Top 5 Projected TEs 2019 - Linear Model")
+
+```
+
+```{r}
+names(df_results_2019_tree) <- c("Team", "NA", "Name", "Position", "Predicted Points")
+df_results_2019_tree <- df_results_2019_tree[,c(1, 4, 3, 5)]
+df_results_2019_tree$`Predicted Points` <- round(df_results_2019_tree$`Predicted Points`, 2)
+
+kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position == "QB") %>% head(5), caption = "Top 5 Projected QBs 2019 - Tree Model")
+
+kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position == "RB") %>% head(5), caption = "Top 5 Projected RBs 2019 - Tree Model")
+
+kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position == "WR") %>% head(5), caption = "Top 5 Projected WRs 2019 - Tree Model")
+
+kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position == "TE") %>% head(5), caption = "Top 5 Projected TEs 2019 - Tree Model")
+
+```
 
 https://www.nielsen.com/us/en/insights/article/2018/fantasy-is-reality-a-look-at-growing-engagement-in-fantasy-sports/
