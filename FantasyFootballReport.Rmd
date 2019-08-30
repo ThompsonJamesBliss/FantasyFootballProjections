@@ -6,7 +6,8 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = F)
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,  echo = F)
 ```
 
 ```{r}
@@ -43,7 +44,7 @@ Using the R package nflScrapR, player stats for each player in each game can be 
 
 Since the data did not include fantasy points, these were manually calculated using the weighted sum given by [ESPN](https://support.espn.com/hc/en-us/articles/360003914032-Scoring-Formats).
 
-Additionally, their positions can be aquired using 'season_rosters'. The data is merged to get the position for each player.
+Additionally, their positions can be aquired using 'season_rosters'. The data is merged to get the position for each player. Since defences score differently from each offensive player, they are excluded from this analysis. Additionally, due to the limited data on length of kicks in nflScrapR, kickers will also be excluded. This analysis will focus on Quarterbacks, Running Backs, Wide Recievers and Tight Ends only.
 
 ### Step 2: Feature Creation
 
@@ -71,7 +72,7 @@ In addition to these features, the following are created:
 * Fumble per pass attempt
 * Interception per pass attempt
 * Fumble per reception
-* Experience (years in league)
+* Experience (years in league since 2009)
 * Games played in previous season
 * Total games played
 
@@ -90,7 +91,7 @@ Additionally, for each of these features, it is ideal to not only look at how ea
 
 ### Step 3: Model Fitting
 
-Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters are explored. The data is split into three sets: Training (Seasons 2009 - 2017), Validation (2018), Test (2019). The models are fit with the features as the independent variables and points as the dependent variable. They are tested with the least absolute deviations penalty. This penalty was chosen because RMSE penalizes larger penalties at quadratically greater rate than smaller penalties. Since there are breakout players or players who get injured who are bound to have stat lines far from what is predicted, RMSE would favor a model that more conservatively accounts for random events. The following models are tested:
+Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters are explored. The data is split into three sets: Training (Seasons 2009 - 2017), Validation (2018), Test (2019). The models are fit with the features as the independent variables and points as the dependent variable. They are tested with the least absolute deviations penalty. This penalty was chosen because RMSE penalizes larger penalties at quadratically greater rate than smaller penalties. Since there are breakout players or players who get injured who are bound to have stat lines far from what is predicted, RMSE would favor a model that more conservatively accounts for random events. The following models are trained with 2009 - 2017 data:
 
 * Linear Regression
 * Lasso Regression
@@ -98,7 +99,7 @@ Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters a
 * XgBoost Regression
 * Random Forest Regression
 
-The best linear model is Lasso Regression, while the best tree-based model is XgBoost.The top 10 coefficients / feature importances are shown in the chart below:
+The best linear model is Lasso Regression, while the best tree-based model is XgBoost. The mean training error for lasso and XgBoost were approximately 31 and 27 respectively. The top 10 coefficients for lasso are shown below:
 
 ```{r fig.width=12, fig.height=10}
 df_coef_O_lin <- read_csv('output_coefs_O_linear.csv') %>% head(10) %>% select(value)
@@ -124,8 +125,26 @@ ggplot(df_coef_O_lin, aes(y = value, x = reorder(name, -abs(value)))) + geom_bar
 
 ```
 
+```{r}
+
+df_LT <- read_csv('LT.csv')
+
+df_LT <- df_LT %>% mutate(fantasy_points = (Yds + Yds_1)/10 + 6 * (TD + TD_1) - 2 * Fmb) %>% select(Year, fantasy_points)
+
+```
+
+This model appears to value career statistics slightly more than the same as previous year statistics. Two of the top ten features related to career statistics. Perhaps, the model is favoring players who have proven themselves as reliable rather than unproven players who may breakout.
+
+Moreover, it is interesting to note that  `Career Fantasy Points` have a negative coefficient. Perhaps as good players who have accumulated a lot of points get old, they should be expected to perform worse. For example, the former Chargers running back LaDainian Tomlinson was drafted in 2001. He earned approximately 414 fantasy points in 2006, but every year after, he performed worse than the year before. Also, his final three years were his three worse totals. Thus, this is not that surprising.
+
+Additionally, The fact that career variance is negatively correlated is not surprising as it suggests that a high yearly or career total may be the result of one or two amazing games rather than consistent play.
+
+Finally, it is interesting that difference in team punt returns between teams was a top 10 feature. Perhaps this is a measure of how strong a team's defense is and how often they force punts. Teams that have many punt returns will have more offensive opportunities. Also, if they are returning the punt, that means the offense will start in better field position, which increase's a player's chance of scoring a touchdown.
+
+Next, the top 10 most important features for XgBoost are shown below:
+
 ```{r fig.width=12, fig.height=10}
-df_coef_O_tree <- read_csv('output_coefs_O_tree.csv') %>% head(10)# %>% select(value)
+df_coef_O_tree <- read_csv('output_coefs_O_tree.csv') %>% head(10)
 
 df_coef_O_tree <- df_coef_O_tree %>% mutate(name = c("Player\nVariance of\nFantasy Points\nPrevious Season",
                                   "Player\nFantasy Points Per\nGame Previous\nSeason",
@@ -146,6 +165,7 @@ ggplot(df_coef_O_tree, aes(y = value, x = reorder(name, -abs(value)))) + geom_ba
 
 ```
 
+The gradient boosting model seems to use features related previous fantasy points more than raw statistics as 3 of the top 4 most important features are fantasy point related.
 
 ```{r}
 #loading data
@@ -183,80 +203,41 @@ df_results_2018_yahoo <- read_csv('df_yahooSports.csv')
 
 df_results_2018_yahoo <- df_results_2018_yahoo %>% select(Rank, `Player Name`, Team, Position) %>% rowwise() %>%
   mutate(name = paste0(substr(strsplit(`Player Name`, ' ')[[1]][1], start = 1, stop = 1), '.', strsplit(`Player Name`, ' ')[[1]][2]),
-         pos_keep = Position,
-         Rank_Yahoo = Rank) %>% as.data.frame() %>% select(Rank_Yahoo, name, Team, pos_keep)
+         pos_keep = Position) %>% as.data.frame() %>%
+  group_by(pos_keep) %>% mutate(Rank_Yahoo = rank(Rank)) %>% ungroup() %>%
+  select(Rank_Yahoo, name, pos_keep)
 
-df_results_2018_yahoo$Team[df_results_2018_yahoo$Team == "JAC"] = "JAX"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Brown" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "PIT"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "K.Hunt" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "KC"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "O.Beckham" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "NYG"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Howard" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "CHI"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "R.Gronkowski" & 
-                        df_results_2018_yahoo$pos_keep == "TE",]$Team = "NE"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Ajayi" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "PHI"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Collins" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "BAL"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "J.Gordon" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "CLE"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Cooper" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "OAK"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "M.Ingram" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "NO"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "C.Hogan" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "NE"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "M.Lynch" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "OAK"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "C.Hyde" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "CLE"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "D.Baldwin" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "SEA"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "T.Coleman" & 
-                        df_results_2018_yahoo$pos_keep == "RB",]$Team = "ATL"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "D.Thomas" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "DEN"
-
-df_results_2018_yahoo[df_results_2018_yahoo$name == "A.Robinson" & 
-                        df_results_2018_yahoo$pos_keep == "WR",]$Team = "JAX"
 
 df_results_2018_ESPN <- read_csv('df_ESPN.csv')
 
-df_results_2018_ESPN <- df_results_2018_ESPN %>% select(`Rank, Player`, Team, Pos) %>% rowwise() %>%
+df_results_2018_ESPN <- df_results_2018_ESPN %>% select(`Rank, Player`, Pos, Team) %>% rowwise() %>%
   mutate(name = paste0(substr(strsplit(`Rank, Player`, ' ')[[1]][2], start = 1, stop = 1), '.', strsplit(`Rank, Player`, ' ')[[1]][3]),
-         Rank_ESPN = substr(strsplit(`Rank, Player`, ' ')[[1]][1], 1, nchar(strsplit(`Rank, Player`, ' ')[[1]][1]) - 1),
-         pos_keep = Pos) %>% as.data.frame()  %>% select(Rank_ESPN, name, Team, pos_keep)
+         Rank_ESPN = as.numeric(substr(strsplit(`Rank, Player`, ' ')[[1]][1], 1, nchar(strsplit(`Rank, Player`, ' ')[[1]][1]) - 1)),
+         pos_keep = Pos) %>% as.data.frame()  %>%
+  group_by(pos_keep) %>% mutate(Rank_ESPN = rank(Rank_ESPN)) %>% ungroup() %>% select(Rank_ESPN, name, Team, pos_keep)
 
-df_results_2018_lin <- df_results_2018_lin %>% mutate(Rank_lin = rank(-predicted_points),
-                               Rank_actual = rank(-actual_points)) %>% select(Team, name, pos_keep,
+df_results_2018_lin <- df_results_2018_lin %>% group_by(pos_keep) %>% mutate(Rank_lin = rank(-predicted_points),
+                               Rank_actual = rank(-actual_points, ties.method = "min")) %>% ungroup() %>%
+  select(Team, name, pos_keep, Team,
                                                                               Rank_actual, Rank_lin)
 
-df_results_2018_tree <- df_results_2018_tree %>% mutate(Rank_tree = rank(-predicted_points)) %>% select(Team, name, pos_keep, Rank_tree)
+df_results_2018_tree <- df_results_2018_tree %>% group_by(pos_keep) %>% mutate(Rank_tree = rank(-predicted_points)) %>% ungroup %>% select(name, pos_keep, Rank_tree, Team)
 
-df_results_2018_lin$Team[df_results_2018_lin$Team == "LA"] = "LAR"
-df_results_2018_tree$Team[df_results_2018_tree$Team == "LA"] = "LAR"
 
-df_results <- inner_join(df_results_2018_yahoo, df_results_2018_ESPN) %>% inner_join(df_results_2018_lin) %>%
-  inner_join(df_results_2018_tree)
+df_results <- inner_join(df_results_2018_tree, df_results_2018_ESPN) %>% inner_join(df_results_2018_lin) %>%
+  inner_join(df_results_2018_yahoo) %>% filter(!(name == "D.Johnson" & Team == "CLE"))
+
+df_results_plot <- df_results %>%
+  summarize(`Tree Ranking Error` = sum(abs(Rank_tree - Rank_actual))/length(Rank_actual),
+            `Linear Ranking Error` = sum(abs(Rank_lin - Rank_actual))/length(Rank_actual),
+            `ESPN Ranking Error` = sum(abs(Rank_ESPN - Rank_actual))/length(Rank_actual),
+            `Yahoo Ranking Error` = sum(abs(Rank_Yahoo - Rank_actual))/length(Rank_actual))
+
+df_results_plot <- df_results_plot %>% gather(key = "key", value =  "value")
+
+ggplot(df_results_plot, aes(reorder(key, value), value)) + geom_bar(stat = "identity", color = "blue",
+                                                                    fill = "lightblue") + xlab('Error Type') + ylab('Value') +
+  ggtitle('Error of Rankings by Source')
 
 ```
 
