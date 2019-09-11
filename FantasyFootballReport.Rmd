@@ -1,7 +1,4 @@
 ---
-title: "Fantasy Football"
-author: "ThompsonBliss"
-date: "August 19, 2019"
 output: html_document
 ---
 
@@ -28,7 +25,7 @@ Due to growing numbers of websites and apps, as well as the greater fan interest
 This project uses machine learning to predict a player's season points based on how the player has performed in previous years.
 
 ## Section 2: Proceedure
-### Step 1 Acquiring the Data
+### Section 2a: Acquiring the Data
 
 Using the R package nflScrapR, player stats for each player in each game can be acquired using the 'season_player_game' command. The data is includes entries from 2009 - 2018. This data included the following statistics:
 
@@ -47,7 +44,7 @@ Since the data did not include fantasy points, these were manually calculated us
 
 Additionally, their positions can be aquired using 'season_rosters'. The data is merged to get the position for each player. Since defences score differently from each offensive player, they are excluded from this analysis. Additionally, due to the limited data on length of kicks in nflScrapR, kickers will also be excluded. This analysis will focus on Quarterbacks, Running Backs, Wide Recievers and Tight Ends only.
 
-### Step 2: Feature Creation
+### Section 2b: Feature Creation
 
 To increase accuracy of predictions, it is ideal to use more than just a player's raw stastics from the previous season. For each offensive statistic columns listed above, the following features are added:
 
@@ -90,7 +87,7 @@ Additionally, for each of these features, it is ideal to not only look at how ea
 | Delta Schedule | Difference in Sum of average value of feature allowed by opponents between current schedule and previous schedule |
 
 
-### Step 3: Model Fitting
+### Section 2c: Model Fitting
 
 Using 'GridSearchCV' in 'sklearn', a variety of models with various paramaters are explored. The data is split into three sets: Training (Seasons 2009 - 2017), Validation (2018), Test (2019). The training, validation and test data have approximately 3000, 400 and 400 rows respectively. The models are fit with the features as the independent variables and points as the dependent variable. They are tested with the least absolute deviations penalty. This penalty was chosen because RMSE penalizes larger penalties at quadratically greater rate than smaller penalties. Since there are breakout players or players who get injured who are bound to have stat lines far from what is predicted, RMSE would favor a model that more conservatively accounts for random events. The following models are trained with 2009 - 2017 data:
 
@@ -250,11 +247,11 @@ ggplot(df_results_plot, aes(reorder(key, value), value)) + geom_bar(stat = "iden
 
 ```
 
-The Yahoo and ESPN model both perform better, but since they are put together by humans, they have the advantage of knowing which players will have better coaching and which players could breakout with more playtime opportunities.
+The Yahoo and ESPN model both perform better, but since they are put together by humans, they have the advantage of knowing which players will have better coaching and which players could breakout with more playtime opportunities. The tree model ranks slightly better than the linear model. This difference coincides with the lower mean absolute error shown in the chart above.
 
 ## Section 4: 2019 Results
 
-The models give the following predictions for 2019:
+Although, the models did not rank as well as the Yahoo and ESPN models, it is still interesting to note what they will do in 2019. The models give the following predictions for 2019:
 
 ```{r}
 names(df_results_2019_lin) <- c("Team", "NA", "Name", "Position", "Predicted Points")
@@ -271,6 +268,8 @@ kable(df_results_2019_lin %>% arrange(-`Predicted Points`) %>% filter(Position =
 
 ```
 
+It is interesting that the models suggest players such as Tom Brady, LeSean McCoy, Larry Fitzgerald and Jimmy Graham are expected to have great fantasy production this year. The model has many features that refer to career statistics so perhaps it is choosing safer players (who have proven themselves in the league) over possible breakout players. However, players such as Saquan Barkley and George Kittle, who recently broke out as star players, are also projected to have strong fantasy years. Overall, it seems that the model predicts high points for players who are greatly expected to perform well as well as players who have had success in the past over moderate players in their prime.
+
 ```{r}
 names(df_results_2019_tree) <- c("Team", "NA", "Name", "Position", "Predicted Points")
 df_results_2019_tree <- df_results_2019_tree[,c(1, 4, 3, 5)]
@@ -285,5 +284,17 @@ kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position 
 kable(df_results_2019_tree %>% arrange(-`Predicted Points`) %>% filter(Position == "TE") %>% head(5), caption = "Top 5 Projected TEs 2019 - Tree Model")
 
 ```
+
+The tree model does a slightly better job of not over-favoring players with strong career statistics. However, Tom Brady is still listed. Moreover, ESPN and Yahoo greatly disagree with Tight Ends 2 - 5. It is interesting that two of the top Tight Ends are from Washington.
+
+## Section 5: Conclusion
+
+Ultimately, the tree models did not prove to perform better than the human developed rankings from ESPN and Yahoo in 2018. However, these projections are a good first step for projecting the fantasy points more accurately next year.
+
+One of the ideas to improve the model include removing career statistics. Perhaps this would fix the over representation of veteren players out of their prime in the top fives of 2019. Moreover, perhaps adding features such as age, injury history, and whether a player is expected to start could help as well.
+
+Some additional aspects to add would include kickers, defences and rookie players. These may all require their own model, as kickers and defences score differently from the other positions and there is no NFL data available for rookie players.
+
+In the end, although the model did not work better than the ESPN or Yahoo projections, these models show that their is promise in using a purely statistics based model to project player fantasy success.
 
 https://www.nielsen.com/us/en/insights/article/2018/fantasy-is-reality-a-look-at-growing-engagement-in-fantasy-sports/
