@@ -15,7 +15,6 @@ library(knitr)
 
 ```
 
-# Using Machine Learning to win my Fantasy Football Leagues
 ## By Thompson Bliss
 
 ## Section 1: Introduction
